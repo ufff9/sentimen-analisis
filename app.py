@@ -4,9 +4,10 @@ import joblib
 import re
 import string
 import os
+import matplotlib.pyplot as plt
 
 # =====================================
-# CONFIG
+# PAGE CONFIG
 # =====================================
 
 st.set_page_config(
@@ -45,6 +46,7 @@ def load_data():
     return pd.read_csv(
         "data/IMDB Dataset.csv"
     )
+
 
 df = load_data()
 
@@ -105,42 +107,89 @@ if menu == "Home":
         "🎬 IMDb Sentiment Analysis Dashboard"
     )
 
-    st.markdown(
-        """
-        Dashboard untuk analisis sentimen review film IMDb
-        menggunakan:
+    st.markdown("""
+    Dashboard analisis sentimen review film
+    menggunakan metode:
 
-        - TF-IDF
-        - Support Vector Machine (SVM)
-        - Logistic Regression
-        - Naive Bayes
-        """
-    )
+    - TF-IDF
+    - Support Vector Machine (SVM)
+    - Logistic Regression
+    - Naive Bayes
+    """)
+
+    positive_count = (
+        df['sentiment'] == 'positive'
+    ).sum()
+
+    negative_count = (
+        df['sentiment'] == 'negative'
+    ).sum()
+
+    total = len(df)
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.metric(
             "Total Reviews",
-            f"{len(df):,}"
+            f"{total:,}"
         )
 
     with col2:
         st.metric(
             "Positive Reviews",
-            f"{(df['sentiment']=='positive').sum():,}"
+            f"{positive_count:,}"
         )
 
     with col3:
         st.metric(
             "Negative Reviews",
-            f"{(df['sentiment']=='negative').sum():,}"
+            f"{negative_count:,}"
         )
 
-    st.image(
-        "results/model_comparison.png",
-        caption="Model Comparison"
+    st.divider()
+
+    st.subheader(
+        "Sentiment Distribution"
     )
+
+    sentiment_counts = (
+        df['sentiment']
+        .value_counts()
+    )
+
+    fig, ax = plt.subplots(
+        figsize=(6,6)
+    )
+
+    ax.pie(
+        sentiment_counts,
+        labels=sentiment_counts.index,
+        autopct="%1.1f%%"
+    )
+
+    st.pyplot(fig)
+
+    st.divider()
+
+    st.subheader(
+        "Model Comparison"
+    )
+
+    if os.path.exists(
+        "results/model_comparison.png"
+    ):
+
+        st.image(
+            "results/model_comparison.png",
+            use_container_width=True
+        )
+
+    else:
+
+        st.warning(
+            "model_comparison.png belum tersedia"
+        )
 
 # =====================================
 # DATASET
@@ -148,31 +197,62 @@ if menu == "Home":
 
 elif menu == "Dataset":
 
-    st.header("📊 Dataset Overview")
+    st.header(
+        "📊 Dataset Overview"
+    )
 
     st.write(
-        f"Jumlah Data: {len(df):,}"
+        f"Total Dataset : {len(df):,}"
     )
 
     st.dataframe(
-        df.head(20)
+        df.head(20),
+        use_container_width=True
     )
 
-    st.subheader(
-        "WordCloud Positive"
-    )
+    st.divider()
 
-    st.image(
-        "results/wordcloud_positive.png"
-    )
+    col1, col2 = st.columns(2)
 
-    st.subheader(
-        "WordCloud Negative"
-    )
+    with col1:
 
-    st.image(
-        "results/wordcloud_negative.png"
-    )
+        st.subheader(
+            "Positive WordCloud"
+        )
+
+        if os.path.exists(
+            "results/wordcloud_positive.png"
+        ):
+
+            st.image(
+                "results/wordcloud_positive.png"
+            )
+
+        else:
+
+            st.warning(
+                "wordcloud_positive.png tidak ditemukan"
+            )
+
+    with col2:
+
+        st.subheader(
+            "Negative WordCloud"
+        )
+
+        if os.path.exists(
+            "results/wordcloud_negative.png"
+        ):
+
+            st.image(
+                "results/wordcloud_negative.png"
+            )
+
+        else:
+
+            st.warning(
+                "wordcloud_negative.png tidak ditemukan"
+            )
 
 # =====================================
 # EVALUATION
@@ -192,9 +272,20 @@ elif menu == "Evaluation":
             "Confusion Matrix"
         )
 
-        st.image(
+        if os.path.exists(
             "results/confusion_matrix.png"
-        )
+        ):
+
+            st.image(
+                "results/confusion_matrix.png",
+                use_container_width=True
+            )
+
+        else:
+
+            st.error(
+                "confusion_matrix.png tidak ditemukan"
+            )
 
     with col2:
 
@@ -202,17 +293,35 @@ elif menu == "Evaluation":
             "ROC Curve"
         )
 
-        st.image(
+        if os.path.exists(
             "results/roc_curve.png"
-        )
+        ):
+
+            st.image(
+                "results/roc_curve.png",
+                use_container_width=True
+            )
+
+        else:
+
+            st.error(
+                "roc_curve.png tidak ditemukan"
+            )
+
+    st.divider()
 
     st.subheader(
-        "Accuracy Comparison"
+        "Model Accuracy Comparison"
     )
 
-    st.image(
+    if os.path.exists(
         "results/model_comparison.png"
-    )
+    ):
+
+        st.image(
+            "results/model_comparison.png",
+            use_container_width=True
+        )
 
 # =====================================
 # PREDICTION
@@ -221,11 +330,11 @@ elif menu == "Evaluation":
 elif menu == "Prediction":
 
     st.header(
-        "🎥 Predict Review Sentiment"
+        "🎥 Sentiment Prediction"
     )
 
     review = st.text_area(
-        "Input Movie Review"
+        "Enter Movie Review"
     )
 
     if st.button(
@@ -252,6 +361,17 @@ elif menu == "Prediction":
                 vector
             )
 
+            score = abs(
+                model.decision_function(
+                    vector
+                )[0]
+            )
+
+            confidence = min(
+                score * 20,
+                100
+            )
+
             if prediction[0] == 1:
 
                 st.success(
@@ -264,6 +384,18 @@ elif menu == "Prediction":
                     "😠 Negative Review"
                 )
 
+            st.subheader(
+                "Confidence Score"
+            )
+
+            st.progress(
+                int(confidence)
+            )
+
+            st.write(
+                f"{confidence:.2f}%"
+            )
+
 # =====================================
 # ABOUT
 # =====================================
@@ -274,27 +406,31 @@ elif menu == "About":
         "ℹ️ About Project"
     )
 
-    st.markdown(
-        """
-        ### Dataset
+    st.markdown("""
+    ## IMDb Sentiment Analysis
 
-        IMDb Movie Reviews Dataset
+    ### Dataset
+    IMDb 50K Movie Reviews Dataset
 
-        ### Models
+    ### Feature Extraction
+    TF-IDF
 
-        - Logistic Regression
-        - Support Vector Machine
-        - Naive Bayes
+    ### Machine Learning Models
+    - Logistic Regression
+    - Support Vector Machine (SVM)
+    - Naive Bayes
 
-        ### Best Model
+    ### Best Model
+    Support Vector Machine (SVM)
 
-        Support Vector Machine (SVM)
+    ### Tools
+    - Python
+    - Pandas
+    - NumPy
+    - Scikit-Learn
+    - Streamlit
+    - Matplotlib
 
-        ### Tools
-
-        - Python
-        - Scikit-Learn
-        - Pandas
-        - Streamlit
-        """
-    )
+    ### Author
+    Machine Learning Project for Sentiment Analysis
+    """)
